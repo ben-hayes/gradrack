@@ -2,6 +2,13 @@ import torch
 
 
 class FMSynth(torch.nn.Module):
+    """A PyTorch module representing an FM synthesiser.
+    
+    A PyTorch module that can be composed with Gradrack oscillators and
+    envelope generators to create a differentiable frequency modulation
+    synthesiser. Routing of operators is set on construction and this routing
+    graph is resolved to generate samples.
+    """    
     def __init__(
         self,
         operators,
@@ -9,6 +16,16 @@ class FMSynth(torch.nn.Module):
         operator_routing,
         sample_rate=None,
     ):
+        """Constructs an FM synth
+
+        Args:
+            operators (tuple): A tuple of Gradrack oscillators
+            envelope_generators (tuple): A tuple of Gradrack envelope generators
+            operator_routing (tuple): A tuple of modulator-carrier index pairs
+                defining the modulator routing graph.
+            sample_rate (float, optional): The sample rate in Hz. Defaults to 
+                None.
+        """    
         super().__init__()
         self.operators = operators
         self.envelope_generators = envelope_generators
@@ -23,6 +40,29 @@ class FMSynth(torch.nn.Module):
         )
 
     def forward(self, gate, frequency, ratios, eg_params, operator_gains=None):
+        """Use the FM synth to generate a sound.
+        
+        Generate a signal given gate, fundamental frequency, and tuning ratios, 
+        alongside envelope generator parameters and operator gains. Resolves the
+        modulation graph recursively whilst memoising calls to each operator to
+        save on computation time.
+
+        Args:
+            gate (torch.Tensor): A tensor representing the gate signal. Of the
+                same format accepted by gradrack.generators.ADSR
+            frequency (torch.Tensor): A tensor depicting the fundamental 
+                frequency of each batch. Can vary over time.
+            ratios (tuple): A tuple of operator tuning ratios in relation to 
+                the fundamental frequency.
+            eg_params (tuple): A tuple of tuples, each of which is exploded as
+                positional arguments after gate, into the forward call of the
+                envelope generator of the corresponding index.
+            operator_gains (tuple, optional): A tuple of operator gains. 
+                Defaults to None.
+
+        Returns:
+            torch.Tensor: The generated signal
+        """        
         operator_outputs = [None] * len(self.operators)
         envelopes = []
 
@@ -72,6 +112,9 @@ class FMSynth(torch.nn.Module):
         return output_signal
 
     def _find_terminal_operators(self, operator_modulation_sources):
+        """Resolve the routing graph to find pure-carrier operators. These are
+        our output.        
+        """        
         terminal_operators = []
         for i, _ in enumerate(operator_modulation_sources):
             is_terminal_operator = True
