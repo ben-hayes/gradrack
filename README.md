@@ -81,7 +81,8 @@ from gradrack.generators import ADSR
 eg = ADSR()
 ```
 
-### Generators 
+
+### Generators
 
 Envelope generators require a gate signal to generate output. This is a signal
 that moves from zero to one at the start of a note event, and from one to zero
